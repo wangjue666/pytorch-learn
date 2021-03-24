@@ -78,3 +78,52 @@ from sklearn import preprocessing
 input_features = preprocessing.StandardScaler().fit_transform(features)
 
 print(input_features[0])
+
+
+### 构建网络模型
+
+x = torch.tensor(input_features, dtype = float)
+
+y = torch.tensor(labels, dtype = float)
+
+# 权重参数初始化
+weights = torch.randn((14, 128), dtype = float, requires_grad = True) 
+biases = torch.randn(128, dtype = float, requires_grad = True) 
+weights2 = torch.randn((128, 1), dtype = float, requires_grad = True) 
+biases2 = torch.randn(1, dtype = float, requires_grad = True) 
+
+
+learning_rate = 0.001 
+losses = []
+
+for i in range(1000):
+    # 计算隐层
+    hidden = x.mm(weights) + biases
+    # 加入激活函数
+    hidden = torch.relu(hidden)
+    # 预测结果
+    predictions = hidden.mm(weights2) + biases2
+    # 通计算损失
+    loss = torch.mean((predictions - y) ** 2) 
+    losses.append(loss.data.numpy())
+    
+    # 打印损失值
+    if i % 100 == 0:
+        print('loss:', loss)
+    #返向传播计算
+    loss.backward()
+    
+    #更新参数
+    weights.data.add_(- learning_rate * weights.grad.data)  
+    biases.data.add_(- learning_rate * biases.grad.data)
+    weights2.data.add_(- learning_rate * weights2.grad.data)
+    biases2.data.add_(- learning_rate * biases2.grad.data)
+    
+    # 每次迭代都得清空
+    weights.grad.data.zero_()
+    biases.grad.data.zero_()
+    weights2.grad.data.zero_()
+    biases2.grad.data.zero_()
+
+
+
