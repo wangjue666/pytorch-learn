@@ -53,4 +53,28 @@ ax4.plot(dates, features['friend'])
 ax4.set_xlabel('Date'); ax4.set_ylabel('Temperature'); ax4.set_title('Friend Estimate')
 
 plt.tight_layout(pad=2)
-plt.show()
+# plt.show()
+
+
+# 独热编码 使用独热编码（One-Hot Encoding），将离散特征的取值扩展到了欧式空间, 计算特征之间的距离变得更加合理
+features = pd.get_dummies(features)
+features.head(5)
+
+
+# 标签
+labels = np.array(features['actual'])
+
+# 在特征中去掉标签
+features= features.drop('actual', axis = 1)
+
+# KEY单独保存一下
+feature_list = list(features.columns)
+
+# 转换成合适的格式
+features = np.array(features)
+
+# 数据进行标准化处理
+from sklearn import preprocessing
+input_features = preprocessing.StandardScaler().fit_transform(features)
+
+print(input_features[0])
