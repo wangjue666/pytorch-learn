@@ -82,48 +82,77 @@ print(input_features[0])
 
 ### 构建网络模型
 
-x = torch.tensor(input_features, dtype = float)
+input_size = input_features.shape[1]
+hidden_size = 128
+output_size = 1
+batch_size = 16
+my_nn = torch.nn.Sequential(
+    torch.nn.Linear(input_size, hidden_size),
+    torch.nn.Sigmoid(),
+    torch.nn.Linear(hidden_size, output_size),
+)
+cost = torch.nn.MSELoss(reduction='mean')
+optimizer = torch.optim.Adam(my_nn.parameters(), lr = 0.001)
 
-y = torch.tensor(labels, dtype = float)
 
-# 权重参数初始化
-weights = torch.randn((14, 128), dtype = float, requires_grad = True) 
-biases = torch.randn(128, dtype = float, requires_grad = True) 
-weights2 = torch.randn((128, 1), dtype = float, requires_grad = True) 
-biases2 = torch.randn(1, dtype = float, requires_grad = True) 
-
-
-learning_rate = 0.001 
+# 训练网络
 losses = []
-
 for i in range(1000):
-    # 计算隐层
-    hidden = x.mm(weights) + biases
-    # 加入激活函数
-    hidden = torch.relu(hidden)
-    # 预测结果
-    predictions = hidden.mm(weights2) + biases2
-    # 通计算损失
-    loss = torch.mean((predictions - y) ** 2) 
-    losses.append(loss.data.numpy())
+    batch_loss = []
+    # MINI-Batch方法来进行训练
+    for start in range(0, len(input_features), batch_size):
+        end = start + batch_size if start + batch_size < len(input_features) else len(input_features)
+        xx = torch.tensor(input_features[start:end], dtype = torch.float, requires_grad = True)
+        yy = torch.tensor(labels[start:end], dtype = torch.float, requires_grad = True)
+        prediction = my_nn(xx)
+        loss = cost(prediction, yy)
+        optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        optimizer.step()
+        batch_loss.append(loss.data.numpy())
     
-    # 打印损失值
-    if i % 100 == 0:
-        print('loss:', loss)
-    #返向传播计算
-    loss.backward()
-    
-    #更新参数
-    weights.data.add_(- learning_rate * weights.grad.data)  
-    biases.data.add_(- learning_rate * biases.grad.data)
-    weights2.data.add_(- learning_rate * weights2.grad.data)
-    biases2.data.add_(- learning_rate * biases2.grad.data)
-    
-    # 每次迭代都得清空
-    weights.grad.data.zero_()
-    biases.grad.data.zero_()
-    weights2.grad.data.zero_()
-    biases2.grad.data.zero_()
+    # 打印损失
+    if i % 100==0:
+        losses.append(np.mean(batch_loss))
+        print(i, np.mean(batch_loss))
 
 
+# 预测训练结果
 
+x = torch.tensor(input_features, dtype = torch.float)
+predict = my_nn(x).data.numpy()
+
+
+print(predict)
+
+
+# 转换日期格式
+dates = [str(int(year)) + '-' + str(int(month)) + '-' + str(int(day)) for year, month, day in zip(years, months, days)]
+dates = [datetime.datetime.strptime(date, '%Y-%m-%d') for date in dates]
+
+# 创建一个表格来存日期和其对应的标签数值
+true_data = pd.DataFrame(data = {'date': dates, 'actual': labels})
+
+# 同理，再创建一个来存日期和其对应的模型预测值
+months = features[:, feature_list.index('month')]
+days = features[:, feature_list.index('day')]
+years = features[:, feature_list.index('year')]
+
+test_dates = [str(int(year)) + '-' + str(int(month)) + '-' + str(int(day)) for year, month, day in zip(years, months, days)]
+
+test_dates = [datetime.datetime.strptime(date, '%Y-%m-%d') for date in test_dates]
+
+predictions_data = pd.DataFrame(data = {'date': test_dates, 'prediction': predict.reshape(-1)}) 
+
+
+# 真实值
+plt.plot(true_data['date'], true_data['actual'], 'b-', label = 'actual')
+
+# 预测值
+plt.plot(predictions_data['date'], predictions_data['prediction'], 'ro', label = 'prediction')
+plt.xticks(rotation = '60'); 
+plt.legend()
+
+# 图名
+plt.xlabel('Date'); plt.ylabel('Maximum Temperature (F)'); plt.title('Actual and Predicted Values');
+plt.show()
